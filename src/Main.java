@@ -20,44 +20,26 @@ public class Main {
 		Mat original = new Mat();
 		Mat converted = new Mat();
 		Mat colorsCanceled = new Mat();
-		Mat edges = new Mat();
 		
-		original = Imgcodecs.imread("images/brighttape.png");
+		original = Imgcodecs.imread("images/tote.png");
 		convertImage(original, converted);
 		Imgcodecs.imwrite("images/converted.png", converted);
 		
 		cancelColors(converted, colorsCanceled);
 		Imgcodecs.imwrite("images/colorcancel.png", colorsCanceled);
-		
-		drawEdges(converted, edges);
-		Imgcodecs.imwrite("images/edges.png", edges);
 
-		List<MatOfPoint> contours = findContours(edges);
-		//printContourPoints(contours);
+		List<MatOfPoint> contours = findContours(colorsCanceled);		
+		List<Rect> rects = findRects(contours);
+		
+		for(int i = 0; i < rects.size(); i++) {
+			Imgcodecs.imwrite("images/submat" + i + ".png", makeSubmats(original, findRects(contours)).get(i));
+		}
 
-		System.out.println(findRects(contours).size());
-		
-		drawContours(original, contours);
-		Imgcodecs.imwrite("images/contours.png", original);
-		
-		Imgcodecs.imwrite("images/submat.png", original.submat(findRects(contours).get(0)));
-		
-		
 	}
 	
 	public static void convertImage(Mat input, Mat output) {
 		Imgproc.blur(input, output, new Size(5,5));
 		Imgproc.cvtColor(output, output, Imgproc.COLOR_BGR2HSV);
-		/*
-		Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(100, 50));
-		Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(40, 40));
-		
-		Imgproc.erode(output, output, erodeElement);
-		Imgproc.erode(output, output, erodeElement);
-		
-		Imgproc.dilate(output, output, dilateElement);
-		Imgproc.dilate(output, output, dilateElement);
-		*/
 		
 		Imgproc.erode(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
 		Imgproc.dilate(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
@@ -102,20 +84,21 @@ public class Main {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
 			if(rect.width > 50 && rect.height > 100) {
 				rects.add(rect);
-				System.out.println("x: " + rect.x + "y: " + rect.y + "width: " + rect.width + "height: " + rect.height);
 			}
 		}
 		return rects;
 	}
 	
 	public static void cancelColors(Mat input, Mat output) {
-		Core.inRange(input, new Scalar(100, 0, 0), new Scalar(180, 255, 255), output);
+		Core.inRange(input, new Scalar(40, 0, 100), new Scalar(120, 100, 255), output);
 	}
 	
-	/*
-	public static boolean isRectWhite(Mat image, Rect rect) {
-		
+	public static List<Mat> makeSubmats(Mat input, List<Rect> rects) {
+		List<Mat> submats = new ArrayList<Mat>();
+		for(int i = 0; i < rects.size(); i++) {
+			submats.add(input.submat(rects.get(i)));
+		}
+		return submats;
 	}
-	*/
 	
 }
