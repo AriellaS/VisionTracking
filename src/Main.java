@@ -4,6 +4,7 @@ import java.util.List;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
@@ -28,7 +29,14 @@ public class Main {
 		cancelColors(converted, colorsCanceled);
 		Imgcodecs.imwrite("images/colorcancel.png", colorsCanceled);
 
-		List<MatOfPoint> contours = findContours(colorsCanceled);		
+		List<MatOfPoint> contours = findContours(colorsCanceled);
+		
+		List<MatOfPoint2f> points2f = approxPoly(contours);
+		System.out.println(points2f.size());
+		for(int i = 0; i < points2f.size(); i++) {
+			System.out.println(points2f.get(i).size());
+		}
+		
 		List<Rect> rects = findRects(contours);
 		
 		for(int i = 0; i < rects.size(); i++) {
@@ -76,6 +84,20 @@ public class Main {
 		for(int i = 0; i < contours.size(); i++) {
 			Imgproc.drawContours(image, contours, i, new Scalar(0,0,255));
 		}
+	}
+	
+	public static List<MatOfPoint2f> approxPoly(List<MatOfPoint> contours) {
+		List<MatOfPoint2f> points = new ArrayList<MatOfPoint2f>();
+		MatOfPoint2f temp = new MatOfPoint2f();
+		MatOfPoint2f tempOut = new MatOfPoint2f();
+		for(int i = 0; i < contours.size(); i++) {
+			temp.fromList(contours.get(i).toList());
+			Imgproc.approxPolyDP(temp, tempOut, 50.0, true);
+			if(tempOut.toList().size() > 3 && tempOut.toList().size() < 10) {
+				points.add(tempOut);
+			}
+		}
+		return points;
 	}
 	
 	public static List<Rect> findRects(List<MatOfPoint> contours) {
