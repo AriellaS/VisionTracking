@@ -33,9 +33,11 @@ public class Main {
 		
 		List<MatOfPoint2f> points2f = approxPoly(contours);
 		System.out.println(points2f.size());
-		for(int i = 0; i < points2f.size(); i++) {
-			System.out.println(points2f.get(i).size());
-		}
+		System.out.println(points2f.get(0).toList());
+		System.out.println(points2f.get(1).toList());
+		
+		System.out.println(findGoalWidth(points2f.get(0).toArray()));
+		
 		
 		List<Rect> rects = findRects(contours);
 		
@@ -88,9 +90,9 @@ public class Main {
 	
 	public static List<MatOfPoint2f> approxPoly(List<MatOfPoint> contours) {
 		List<MatOfPoint2f> points = new ArrayList<MatOfPoint2f>();
-		MatOfPoint2f temp = new MatOfPoint2f();
-		MatOfPoint2f tempOut = new MatOfPoint2f();
 		for(int i = 0; i < contours.size(); i++) {
+			MatOfPoint2f temp = new MatOfPoint2f();
+			MatOfPoint2f tempOut = new MatOfPoint2f();
 			temp.fromList(contours.get(i).toList());
 			Imgproc.approxPolyDP(temp, tempOut, 50.0, true);
 			if(tempOut.toList().size() > 3 && tempOut.toList().size() < 10) {
@@ -123,4 +125,18 @@ public class Main {
 		return submats;
 	}
 	
+	public static double findGoalWidth(Point[] points) {
+		Point highestY = points[0];
+		Point secondHighestY = points[1];
+		for(int i = 2; i < points.length; i++) {
+			if(points[i].y > highestY.y) {
+				highestY = points[i];
+			}
+			else if(points[i].y > secondHighestY.y) {
+				secondHighestY = points[i];
+			}
+		}
+		double width = Math.sqrt((highestY.x - secondHighestY.x)*(highestY.x - secondHighestY.x) + (highestY.x - secondHighestY.y)*(highestY.y - secondHighestY.y));
+		return width;
+	}
 }
