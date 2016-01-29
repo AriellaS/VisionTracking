@@ -22,7 +22,7 @@ public class Main {
 		Mat converted = new Mat();
 		Mat colorsCanceled = new Mat();
 		
-		original = Imgcodecs.imread("images/tote.png");
+		original = Imgcodecs.imread("tower/10ftcenter2.jpg");
 		convertImage(original, converted);
 		Imgcodecs.imwrite("images/converted.png", converted);
 		
@@ -30,21 +30,22 @@ public class Main {
 		Imgcodecs.imwrite("images/colorcancel.png", colorsCanceled);
 
 		List<MatOfPoint> contours = findContours(colorsCanceled);
+		//contours = filterContours(contours);
 		
 		List<MatOfPoint2f> points2f = approxPoly(contours);
 		System.out.println(points2f.size());
-		System.out.println(points2f.get(0).toList());
-		System.out.println(points2f.get(1).toList());
+		System.out.println(points2f.get(0).size());
 		
-		System.out.println(findGoalWidth(points2f.get(0).toArray()));
-		
+		for(int i = 0; i < points2f.get(0).toList().size(); i++) {
+			System.out.println(points2f.get(0).toList().get(i));
+		}
 		
 		List<Rect> rects = findRects(contours);
+		System.out.println(rects.size());
 		
 		for(int i = 0; i < rects.size(); i++) {
 			Imgcodecs.imwrite("images/submat" + i + ".png", makeSubmats(original, findRects(contours)).get(i));
 		}
-
 	}
 	
 	public static void convertImage(Mat input, Mat output) {
@@ -58,18 +59,6 @@ public class Main {
 		Imgproc.erode(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(50, 50)));
 		
 		Imgproc.blur(output, output, new Size(5,5));
-	}
-	
-	public static void printContourPoints(List<MatOfPoint> contours) {
-		List<Point> points = new ArrayList<>();
-		for(int i = 0; i < contours.size(); i ++) {
-			for(int x = 0; x < contours.get(i).toList().size(); x++) {
-				points.add(contours.get(i).toList().get(x));
-			}
-		}		
-		for(int i = 0; i < points.size(); i++) {
-			System.out.println(points.get(i));
-		}
 	}
 	
 	public static void drawEdges(Mat input, Mat output) {
@@ -86,6 +75,28 @@ public class Main {
 		for(int i = 0; i < contours.size(); i++) {
 			Imgproc.drawContours(image, contours, i, new Scalar(0,0,255));
 		}
+	}
+	
+	public static void printContourPoints(List<MatOfPoint> contours) {
+		List<Point> points = new ArrayList<>();
+		for(int i = 0; i < contours.size(); i ++) {
+			for(int x = 0; x < contours.get(i).toList().size(); x++) {
+				points.add(contours.get(i).toList().get(x));
+			}
+		}		
+		for(int i = 0; i < points.size(); i++) {
+			System.out.println(points.get(i));
+		}
+	}
+	
+	public static List<MatOfPoint> filterContours(List<MatOfPoint> contours) {
+		for(int i = 0; i < contours.size(); i++) {
+			Rect rect = Imgproc.boundingRect(contours.get(i));
+			if(rect.width > 200 && rect.height > 100) {
+				contours.remove(i);
+			}
+		}
+		return contours;
 	}
 	
 	public static List<MatOfPoint2f> approxPoly(List<MatOfPoint> contours) {
@@ -106,7 +117,7 @@ public class Main {
 		List<Rect> rects = new ArrayList<Rect>();
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
-			if(rect.width > 50 && rect.height > 100) {
+			if(rect.width > 200 && rect.height > 100) {
 				rects.add(rect);
 			}
 		}
@@ -138,5 +149,12 @@ public class Main {
 		}
 		double width = Math.sqrt((highestY.x - secondHighestY.x)*(highestY.x - secondHighestY.x) + (highestY.x - secondHighestY.y)*(highestY.y - secondHighestY.y));
 		return width;
+	}
+	
+	public static double findDistance(double horzFOV, double goalWidth) {
+		double realWidth = 20; // inches
+		double imageWidth = 800; // pixels
+		double distance = (realWidth * ((imageWidth/2)/goalWidth)) / Math.tan(Math.toRadians(horzFOV / 2.0));
+		return distance;
 	}
 }
