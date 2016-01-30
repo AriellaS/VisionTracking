@@ -11,6 +11,7 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.videoio.VideoCapture;
 
 public class Main {
 
@@ -18,7 +19,13 @@ public class Main {
 		
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		
-		Mat original = new Mat();
+		VideoCapture camera = new VideoCapture();
+		camera.open(1);
+		Mat frame = new Mat();
+		camera.read(frame);
+		findGoal(camera);
+		/*
+//		Mat original = new Mat();
 		Mat converted = new Mat();
 		Mat colorsCanceled = new Mat();
 		
@@ -48,6 +55,7 @@ public class Main {
 		for(int i = 0; i < rects.size(); i++) {
 			Imgcodecs.imwrite("images/submat" + i + ".png", makeSubmats(original, findRects(contours)).get(i));
 		}
+		*/
 	}
 	
 	public static void convertImage(Mat input, Mat output) {
@@ -94,7 +102,9 @@ public class Main {
 	public static List<MatOfPoint> filterContours(List<MatOfPoint> contours) {
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
-			if(rect.width > 200 && rect.height > 100) {
+			if(rect.width > 90 && rect.width < 200 
+					&& rect.height > 30 && rect.height < 100
+					&& rect.y < 200) {
 				contours.remove(i);
 			}
 		}
@@ -119,7 +129,9 @@ public class Main {
 		List<Rect> rects = new ArrayList<Rect>();
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
-			if(rect.width > 200 && rect.height > 100) {
+			if(rect.width > 90 && rect.width < 200 
+				&& rect.height > 30 && rect.height < 100
+				&& rect.y < 200) {
 				rects.add(rect);
 			}
 		}
@@ -127,7 +139,7 @@ public class Main {
 	}
 	
 	public static void cancelColors(Mat input, Mat output) {
-		Core.inRange(input, new Scalar(40, 0, 100), new Scalar(120, 100, 255), output);
+		Core.inRange(input, new Scalar(40, 0, 110), new Scalar(115, 80, 255), output);
 	}
 	
 	public static List<Mat> makeSubmats(Mat input, List<Rect> rects) {
@@ -153,10 +165,35 @@ public class Main {
 		return width;
 	}
 	
-	public static double findDistance(double vertFOV, double tapeHeight, double camHeight, double camAngle) {
-		double realHeight = 20; // inches
-		double imageHeight = 2448; // pixels
-		double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(Math.toRadians((vertFOV / 2.0) + camAngle));
+	public static double findDistance(double vertFOV, double tapeHeight) {
+		double realHeight = 14; // inches
+		double imageHeight = 480; // pixels
+		double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(Math.toRadians(vertFOV / 2.0));
 		return distance;
+	}
+	
+	public static void findGoal(VideoCapture camera) {
+		while(true) {
+			Mat frame = new Mat();
+			Mat output = new Mat();
+			camera.read(frame);
+			Imgcodecs.imwrite("original.png", frame);
+			convertImage(frame, output);
+			Imgcodecs.imwrite("converted.png", output);
+			cancelColors(output, output);
+			Imgcodecs.imwrite("colors.png", output);
+			
+			List<MatOfPoint> contours = findContours(output);
+			List<Rect> rects = findRects(contours);
+			
+			System.out.println(rects.size());
+			for(int i = 0; i < rects.size(); i++) {
+				Imgcodecs.imwrite("submat" + i + ".png", makeSubmats(frame, rects).get(i));
+			}
+			for(int i = 0; i < rects.size(); i++) {
+				System.out.println("x: " + rects.get(i).x + " y: " + rects.get(i).y + " width: " + rects.get(i).width + " height: " + rects.get(i).height);
+				System.out.println(findDistance(41.1, rects.get(i).height));
+			}
+		}
 	}
 }
