@@ -22,7 +22,7 @@ public class Main {
 		Mat converted = new Mat();
 		Mat colorsCanceled = new Mat();
 		
-		original = Imgcodecs.imread("tower/10ftcenter2.jpg");
+		original = Imgcodecs.imread("tower/8ftcenter.jpg");
 		convertImage(original, converted);
 		Imgcodecs.imwrite("images/converted.png", converted);
 		
@@ -42,6 +42,8 @@ public class Main {
 		
 		List<Rect> rects = findRects(contours);
 		System.out.println(rects.size());
+		System.out.println(rects.get(0).width);
+		System.out.println(findDistance(57.2,rects.get(0).width,6,20));
 		
 		for(int i = 0; i < rects.size(); i++) {
 			Imgcodecs.imwrite("images/submat" + i + ".png", makeSubmats(original, findRects(contours)).get(i));
@@ -151,10 +153,10 @@ public class Main {
 		return width;
 	}
 	
-	public static double findDistance(double horzFOV, double goalWidth) {
-		double realWidth = 20; // inches
-		double imageWidth = 800; // pixels
-		double distance = (realWidth * ((imageWidth/2)/goalWidth)) / Math.tan(Math.toRadians(horzFOV / 2.0));
+	public static double findDistance(double vertFOV, double tapeHeight, double camHeight, double camAngle) {
+		double realHeight = 20; // inches
+		double imageHeight = 2448; // pixels
+		double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(Math.toRadians((vertFOV / 2.0) + camAngle));
 		return distance;
 	}
 }
