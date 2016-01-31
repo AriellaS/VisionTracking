@@ -131,7 +131,7 @@ public class Main {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
 			if(rect.width > 90 && rect.width < 200 
 				&& rect.height > 30 && rect.height < 100
-				&& rect.y < 200) {
+				&& rect.y < 250) {
 				rects.add(rect);
 			}
 		}
@@ -139,7 +139,7 @@ public class Main {
 	}
 	
 	public static void cancelColors(Mat input, Mat output) {
-		Core.inRange(input, new Scalar(40, 0, 110), new Scalar(115, 80, 255), output);
+		Core.inRange(input, new Scalar(40, 0, 130), new Scalar(115, 255, 255), output);
 	}
 	
 	public static List<Mat> makeSubmats(Mat input, List<Rect> rects) {
@@ -165,11 +165,17 @@ public class Main {
 		return width;
 	}
 	
-	public static double findDistance(double vertFOV, double tapeHeight) {
+	public static double findDistance(double vertFOV, double tapeHeight, double camAngle) {
 		double realHeight = 14; // inches
 		double imageHeight = 480; // pixels
-		double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(Math.toRadians(vertFOV / 2.0));
+		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(Math.toRadians(vertFOV / 2.0));
+		double distance = (realHeight * ((((vertFOV/2 + camAngle)/vertFOV) * imageHeight)/tapeHeight)) / Math.tan(Math.toRadians(vertFOV/2 + camAngle));
+		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.sin(Math.toRadians(vertFOV/2) * Math.sin(Math.toRadians(90 - vertFOV/2)));
 		return distance;
+	}
+	
+	public static double findRealHeight(double width) {
+		return width * 0.7;
 	}
 	
 	public static void findGoal(VideoCapture camera) {
@@ -185,14 +191,12 @@ public class Main {
 			
 			List<MatOfPoint> contours = findContours(output);
 			List<Rect> rects = findRects(contours);
-			
 			System.out.println(rects.size());
+			
 			for(int i = 0; i < rects.size(); i++) {
 				Imgcodecs.imwrite("submat" + i + ".png", makeSubmats(frame, rects).get(i));
-			}
-			for(int i = 0; i < rects.size(); i++) {
 				System.out.println("x: " + rects.get(i).x + " y: " + rects.get(i).y + " width: " + rects.get(i).width + " height: " + rects.get(i).height);
-				System.out.println(findDistance(41.1, rects.get(i).height));
+				System.out.println(findDistance(41.1, findRealHeight(rects.get(i).width), 28));
 			}
 		}
 	}
