@@ -18,20 +18,7 @@ public class Main {
 	public static void main(String[] args) {
 		
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-		/*
-		Mat frame = Imgcodecs.imread("images/colorcancel.png");
-		Mat colors = new Mat();
-		//cancelColors(frame, frame);
-		Imgproc.cvtColor(frame, colors, Imgproc.COLOR_BGR2GRAY);
-		List<MatOfPoint> contours = findContours(colors);
-		System.out.println(contours.size());
-		drawContours(frame, contours);
-		Imgcodecs.imwrite("contours.png", frame);
-		List<MatOfPoint2f> points2f = approxPoly(contours);
-		for(int i = 0; i < points2f.get(0).toList().size(); i++) {
-			System.out.println(points2f.get(0).toList().get(i));
-		}
-		*/
+
 		VideoCapture camera = new VideoCapture();
 		camera.open(1);
 		Mat frame = new Mat();
@@ -132,7 +119,7 @@ public class Main {
 			MatOfPoint2f temp = new MatOfPoint2f();
 			MatOfPoint2f tempOut = new MatOfPoint2f();
 			temp.fromList(contours.get(i).toList());
-			Imgproc.approxPolyDP(temp, tempOut, 10.0, true);
+			Imgproc.approxPolyDP(temp, tempOut, 7.0, false); //third parameter: smaller->more points
 			if(tempOut.toList().size() > 3 && tempOut.toList().size() < 10) {
 				points.add(tempOut);
 			}
@@ -181,20 +168,29 @@ public class Main {
 	}
 	
 	public static double findDistance(double vertFOV, double tapeHeight, double camAngle) {
+		vertFOV = Math.toRadians(vertFOV);
+		camAngle = Math.toRadians(camAngle);
 		double realHeight = 14; // inches
 		double realWidth = 20;
 		double imageHeight = 480; // pixels
-		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(Math.toRadians(vertFOV / 2.0));
-		double distance = (realHeight * ((((vertFOV/2 + camAngle)/vertFOV) * imageHeight)/tapeHeight)) / Math.tan(Math.toRadians(vertFOV/2 + camAngle));
-		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.sin(Math.toRadians(vertFOV/2) * Math.sin(Math.toRadians(90 - vertFOV/2)));
+		double horizonPixel = ((vertFOV/2 + camAngle)/vertFOV) * imageHeight;
+		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(vertFOV / 2.0);
+		//double distance = (realHeight * ((((vertFOV/2 + camAngle)/vertFOV) * imageHeight)/tapeHeight)) / Math.tan(vertFOV/2 + camAngle);
+		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.sin(vertFOV/2) * Math.sin(90 - vertFOV/2)));
 		
-		//double distance2 = realWidth *   
+		double topAvg; //distance from horizon to top of goal
+		double bottomAvg; //distance from horizon to bottom of goal
+		double imageTop = (imageHeight - horizonPixel) / Math.cos((imageHeight * (imageHeight - horizonPixel)/vertFOV));
+		double imageBottom = horizonPixel;
+		double goalTop = topAvg / Math.cos(topAvg * (imageHeight - horizonPixel)/vertFOV);
+		double goalBottom = bottomAvg / Math.cos(bottomAvg * (imageHeight - horizonPixel)/vertFOV);
+		double distance = realHeight * (((imageTop - imageBottom)/(goalTop - goalBottom))/(Math.tan(vertFOV - camAngle)));
 		
 		return distance;
 	}
 	
 	public static double findRealHeight(double width) {
-		return width * 0.7;
+		return width * 0.7; //ratio from height to width is 14/20 (0.7)
 	}
 	
 	public static void findGoal(VideoCapture camera) {
@@ -216,22 +212,12 @@ public class Main {
 			contours = filterContours(contours);			
 			List<MatOfPoint2f> points2f = approxPoly(contours);
 			drawContours(frame, contours);
-			Imgcodecs.imwrite("contours.png", frame);
-			
-			System.out.println("points2f size " + points2f.size());
-			for(int i = 0; i < points2f.size(); i++) {
-				System.out.println(points2f.get(i).toList().get(i));
-				System.out.println("amount of points " + points2f.get(i).toList().size());
-				for(int x = 0; x < points2f.get(i).toList().size(); x++) {
-					System.out.println(points2f.get(i).toList().get(i));
-				}
-				System.out.println("new point");
-			}			
+			Imgcodecs.imwrite("contours.png", frame);			
 			
 			for(int i = 0; i < rects.size(); i++) {
 				Imgcodecs.imwrite("submat" + i + ".png", makeSubmats(frame, rects).get(i));
 				//System.out.println("x: " + rects.get(i).x + " y: " + rects.get(i).y + " width: " + rects.get(i).width + " height: " + rects.get(i).height);
-				//System.out.println(findDistance(44.44, findRealHeight(rects.get(i).width), 20));
+				System.out.println(findDistance(44.44, findRealHeight(findGoalWidth(points2f.get(i).toArray())), 22));
 			}
 		}
 	}
