@@ -66,14 +66,10 @@ public class Main {
 		Imgproc.erode(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
 		Imgproc.dilate(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
 		
-		//Imgproc.dilate(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(50, 50)));
-		//Imgproc.erode(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(50, 50)));
+		Imgproc.dilate(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
+		Imgproc.erode(output, output, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
 		
 		Imgproc.blur(output, output, new Size(5,5));
-	}
-	
-	public static void drawEdges(Mat input, Mat output) {
-		Imgproc.Canny(input, output, 1, 100);
 	}
 	
 	public static List<MatOfPoint> findContours(Mat image) {
@@ -106,13 +102,14 @@ public class Main {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
 			if(rect.width > 90 && rect.width < 200 
 					&& rect.height > 30 && rect.height < 100
-					&& rect.y < 250) {
+					&& rect.y < 400) {
 				newContours.add(contours.get(i));
 			}
 		}
 		return newContours;
 	}
 	
+	//find approximate point vertices of contoured goal tape
 	public static List<MatOfPoint2f> approxPoly(List<MatOfPoint> contours) {
 		List<MatOfPoint2f> points = new ArrayList<MatOfPoint2f>();
 		for(int i = 0; i < contours.size(); i++) {
@@ -133,13 +130,14 @@ public class Main {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
 			if(rect.width > 90 && rect.width < 200 
 				&& rect.height > 30 && rect.height < 100
-				&& rect.y < 250) {
+				&& rect.y < 400) {
 				rects.add(rect);
 			}
 		}
 		return rects;
 	}
 	
+	// scalar params: HSV
 	public static void cancelColors(Mat input, Mat output) {
 		Core.inRange(input, new Scalar(25, 0, 220), new Scalar(130, 80, 255), output);
 	}
@@ -152,7 +150,8 @@ public class Main {
 		return submats;
 	}
 	
-	public static double findGoalWidth(Point[] points) {
+	//finds bottom vertices of goal tape
+	public static Point[] findBottomY(Point[] points) {
 		Point highestY = points[0];
 		Point secondHighestY = points[1];
 		for(int i = 2; i < points.length; i++) {
@@ -163,34 +162,63 @@ public class Main {
 				secondHighestY = points[i];
 			}
 		}
-		double width = Math.sqrt((highestY.x - secondHighestY.x)*(highestY.x - secondHighestY.x) + (highestY.x - secondHighestY.y)*(highestY.y - secondHighestY.y));
-		return width;
+		Point[] highestYCoords = {highestY, secondHighestY};
+		return highestYCoords;
 	}
 	
-	public static double findDistance(double vertFOV, double tapeHeight, double camAngle) {
+	public static double dist(Point[] coords) {
+		double dist = Math.sqrt((coords[0].x - coords[1].x)*(coords[0].x - coords[1].x) + (coords[0].x - coords[1].y)*(coords[0].y - coords[1].y));
+		return dist;
+	}
+	
+	//for Dylan's second dist formula
+	public static double pointYAvg(Point[] points) {
+		double avg = (points[0].y + points[1].y)/2;
+		return avg;
+	}
+	
+	//params: tapeHeight is height of tape in pixels, tapeBottomY is average bottom y coord of tape, camAngle is upward angle of camera 
+	public static double findDistance(double vertFOV, double tapeHeight, double tapeBottomY, double camAngle) {
 		vertFOV = Math.toRadians(vertFOV);
 		camAngle = Math.toRadians(camAngle);
 		double realHeight = 14; // inches
-		double realWidth = 20;
 		double imageHeight = 480; // pixels
-		double horizonPixel = ((vertFOV/2 + camAngle)/vertFOV) * imageHeight;
-		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(vertFOV / 2.0);
-		//double distance = (realHeight * ((((vertFOV/2 + camAngle)/vertFOV) * imageHeight)/tapeHeight)) / Math.tan(vertFOV/2 + camAngle);
-		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.sin(vertFOV/2) * Math.sin(90 - vertFOV/2)));
 		
-		double topAvg; //distance from horizon to top of goal
-		double bottomAvg; //distance from horizon to bottom of goal
-		double imageTop = (imageHeight - horizonPixel) / Math.cos((imageHeight * (imageHeight - horizonPixel)/vertFOV));
-		double imageBottom = horizonPixel;
-		double goalTop = topAvg / Math.cos(topAvg * (imageHeight - horizonPixel)/vertFOV);
-		double goalBottom = bottomAvg / Math.cos(bottomAvg * (imageHeight - horizonPixel)/vertFOV);
-		double distance = realHeight * (((imageTop - imageBottom)/(goalTop - goalBottom))/(Math.tan(vertFOV - camAngle)));
+		double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.tan(vertFOV/2.0); //Dylan's first dist formula
+		//double distance = (realHeight * ((((vertFOV/2 + camAngle)/vertFOV) * imageHeight)/tapeHeight)) / Math.tan(vertFOV/2 + camAngle); //our dist formula
+		//double distance = (realHeight * ((imageHeight/2)/(tapeHeight))) / Math.sin(vertFOV/2) * Math.sin(90 - vertFOV/2); //Justin's dist formula (law of sines)
 		
-		return distance;
+		double distError = Math.log10(distance/61.223) / Math.log10(1.0056); //power function of error of first distance formula
+		
+		//Dylan's second dist formula
+//		double topAvg = horizonY - (tapeBottomY - tapeHeight); //distance from horizon to top of goal
+//		double bottomAvg = horizonY - tapeBottomY; //distance from horizon to bottom of goal
+//		double imageTop = (imageHeight - horizonY) / Math.cos((imageHeight-(imageHeight-horizonY) * (imageHeight)/vertFOV));
+//		double imageBottom = horizonY;
+//		double goalTop = topAvg / Math.cos(horizonY-topAvg * (imageHeight)/vertFOV);
+//		double goalBottom = bottomAvg / Math.cos(horizonY-bottomAvg * (imageHeight)/vertFOV);
+//		double distance = realHeight * (((imageTop - imageBottom)/(goalTop - goalBottom))/(Math.tan(vertFOV - camAngle)));
+	
+		return distError;
 	}
 	
+	//finds real height based off of observed width
 	public static double findRealHeight(double width) {
 		return width * 0.7; //ratio from height to width is 14/20 (0.7)
+	}
+	
+	//finds angle at which camera is facing the goal
+	public static double findLateralAngle(Point[] points) {
+		double angle = Math.toDegrees(Math.asin(Math.abs((points[0].y - points[1].y)/dist(points))));
+		return angle;
+	}
+	
+	//finds position of camera off midline of goal
+	public static boolean isOnRight(Point[] points) {
+		if(points[0].y > points[1].y) {
+			return points[0].x < points[1].x;
+		}
+		return false;
 	}
 	
 	public static void findGoal(VideoCapture camera) {
@@ -205,19 +233,19 @@ public class Main {
 			Imgcodecs.imwrite("colors.png", output);
 			
 			List<MatOfPoint> contours = findContours(output);
-
 			List<Rect> rects = findRects(contours);
-			//System.out.println(rects.size());
 			
 			contours = filterContours(contours);			
 			List<MatOfPoint2f> points2f = approxPoly(contours);
-			drawContours(frame, contours);
-			Imgcodecs.imwrite("contours.png", frame);			
 			
-			for(int i = 0; i < rects.size(); i++) {
-				Imgcodecs.imwrite("submat" + i + ".png", makeSubmats(frame, rects).get(i));
-				//System.out.println("x: " + rects.get(i).x + " y: " + rects.get(i).y + " width: " + rects.get(i).width + " height: " + rects.get(i).height);
-				System.out.println(findDistance(44.44, findRealHeight(findGoalWidth(points2f.get(i).toArray())), 22));
+			if(points2f.size() >= rects.size()){
+				for(int i = 0; i < rects.size(); i++) {
+					Imgcodecs.imwrite("submat" + i + ".png", makeSubmats(frame, rects).get(i));
+					Point[] bottomY = findBottomY(points2f.get(i).toArray());
+					System.out.println("dist: " + findDistance(44.44, findRealHeight(rects.get(i).width), rects.get(i).y + rects.get(i).height, 31));
+					System.out.println("lat angle: " + findLateralAngle(bottomY));
+					System.out.println("isOnRight : " + isOnRight(bottomY));
+				}
 			}
 		}
 	}

@@ -1,0 +1,35 @@
+width:
+
+11ft : 91-92px
+10.5ft : 94-95px
+10ft : 95-96px
+9.5ft : 99-100px
+9ft : 106-107px
+8.5ft : 108-109px
+8ft : 112-113px
+7.5ft : 117-118px
+7ft : 122-123px
+6.5ft : 122-123px
+6ft : 131px
+5.5ft : 134-135px
+5ft : 139-140px
+4.5ft: 140px
+4ft : 146px
+
+========================
+
+dylans first distance formula:
+
+x : y
+11ft : 129in
+10ft : 121in
+9ft : 110in
+8ft : 105in
+7ft : 100in
+6ft : 91in
+5ft : 85in
+4ft : 81in
+y = 64.811 * 1.0048^x
+y = 61.223 * 1.0056^x
+x = log base 1.0056 of (y/61.223)
+x = log10 of (y/61.223) / log10 of 1.0056

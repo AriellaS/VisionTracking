@@ -1,0 +1,7 @@
+in the event of an emergency of needing to know the camera height:
+default camera height as positioned directly on the ground
+
+first: feet from goal (from the ground)
+second: distance from midline
+third: camera angle in degrees which we hope is very accurate
+fourth: letter of duplicate image
