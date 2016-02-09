@@ -218,7 +218,7 @@ public class Main {
 		if(points[0].y > points[1].y) {
 			return points[0].x < points[1].x;
 		}
-		return false;
+		return points[0].x > points[1].x;
 	}
 	
 	public static void findGoal(VideoCapture camera) {
