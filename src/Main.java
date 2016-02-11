@@ -57,21 +57,43 @@ public class Main {
 		}
 	}
 	
-	public static MatOfPoint filterContours(List<MatOfPoint> contours) {
-		List<Rect> rects = new ArrayList<Rect>();
-		int lrgstRectIndx = 0;
+	public static List<MatOfPoint> filterContours(List<MatOfPoint> contours) {
+		List<MatOfPoint> newContours = new ArrayList<MatOfPoint>();
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
 			if(rect.width > 90 && rect.width < 200 
 					&& rect.height > 30 && rect.height < 100
 					&& rect.y < 400) {
-				rects.add(rect);
-				if(rects.get(i).width > rects.get(lrgstRectIndx).width) {
-					lrgstRectIndx = i;
-				}
+				newContours.add(contours.get(i));
+			}
+		}
+		return newContours;
+	}
+	
+	public static MatOfPoint findGoalContour(List<MatOfPoint> contours) {
+		List<Rect> rects = new ArrayList<Rect>();
+		int lrgstRectIndx = 0;
+		for(int i = 1; i < contours.size(); i++) {
+			Rect rect = Imgproc.boundingRect(contours.get(i));
+			rects.add(rect);
+			if(rects.get(i).width > rects.get(lrgstRectIndx).width) {
+				lrgstRectIndx = i;
 			}
 		}
 		return contours.get(lrgstRectIndx);
+	}
+	
+	//finds if possible goals are inside the tower
+	public static List<MatOfPoint> inTower(List<MatOfPoint> contours, Rect tower) {
+		List<MatOfPoint> goals = new ArrayList<MatOfPoint>();
+		for(int i = 0; i < contours.size(); i++) {
+			Rect rect = Imgproc.boundingRect(contours.get(i));
+			Point center = new Point(rect.x + rect.width/2, rect.y + rect.height/2);
+			if((center.x > tower.x && center.x < (tower.x + tower.width)) 
+					&& (center.y > tower.y && center.y < (tower.y + tower.height)));
+			goals.add(contours.get(i));
+		}
+		return goals;
 	}
 	
 	//find approximate point vertices of contoured goal tape
@@ -87,14 +109,21 @@ public class Main {
 		List<Rect> rects = new ArrayList<Rect>();
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
-			rects.add(rect);
+			if(rect.width > 100 && rect.height > 100) {
+				rects.add(rect);
+			}
 		}
 		return rects;
 	}
 	
-	// scalar params: HSV
-	public static void cancelColors(Mat input, Mat output) {
+	// scalar params: H(0-180), S(0-255), V(0-255)
+	public static void cancelColorsTape(Mat input, Mat output) {
 		Core.inRange(input, new Scalar(25, 0, 220), new Scalar(130, 80, 255), output);
+	}
+	
+	// tower is supposed to be black
+	public static void cancelColorsTower(Mat input, Mat output) {
+		Core.inRange(input, new Scalar(0, 0, 0), new Scalar(180, 255, 10), output);
 	}
 	
 	public static List<Mat> makeSubmats(Mat input, List<Rect> rects) {
@@ -128,7 +157,6 @@ public class Main {
 	
 	public static double findDistToGoal(double tapeHeight, double camAngle) {
 		camAngle = Math.toRadians(camAngle);
-		
 		double distance = (REAL_TAPE_HEIGHT * ((IMG_HEIGHT/2)/(tapeHeight))) / Math.tan(VERT_FOV/2.0); //Dylan's first dist formula
 		//double distance = (REAL_TAPE_HEIGHT * ((((VERT_FOV/2 + camAngle)/VERT_FOV) * IMG_HEIGHT)/tapeHeight)) / Math.tan(VERT_FOV/2 + camAngle); //our dist formula
 		double distError = Math.log10(distance/61.223) / Math.log10(1.0056); //power function of error of first distance formula
@@ -163,24 +191,39 @@ public class Main {
 		while(true) {
 			Mat frame = new Mat();
 			Mat output = new Mat();
+			Mat towerImg = new Mat();
 			camera.read(frame);
 			Imgcodecs.imwrite("original.png", frame);
 			convertImage(frame, output);
 			Imgcodecs.imwrite("converted.png", output);
-			cancelColors(output, output);
-			Imgcodecs.imwrite("colors.png", output);
+			cancelColorsTower(output, towerImg);
+			Imgcodecs.imwrite("tower.png", towerImg);
+			cancelColorsTape(output, output);
+			Imgcodecs.imwrite("tape.png", output);
 			
+			List<MatOfPoint> contourTower = findContours(towerImg);
+			List<Rect> towerRect = findRect(contourTower);
 			List<MatOfPoint> contours = findContours(output);
-			MatOfPoint contour = filterContours(contours);			
-			Rect goal = Imgproc.boundingRect(contour);
-			MatOfPoint2f points2f = approxPoly(contour);
+			contours = filterContours(contours);
 			
-			Imgcodecs.imwrite("submat" + ".png", frame.submat(goal));
-			Point[] bottomY = findBottomY(points2f.toArray());
-			System.out.println("dist: " + findDistToGoal(findRealHeight(goal.width), 31));
-			System.out.println("lat angle: " + findLateralAngle(bottomY));
-			System.out.println("isOnRight : " + isFacingLeft(bottomY));
-			
+			if(towerRect.size() == 1) { // assumes only one tower is found 
+				Rect tower = towerRect.get(0);
+				contours = inTower(contours, tower);
+				
+				if(contours.size() > 0) {
+					MatOfPoint goalContour = findGoalContour(contours);
+					Rect goalRect = Imgproc.boundingRect(goalContour);
+					MatOfPoint2f points2f = approxPoly(goalContour);
+					Point[] bottomY = findBottomY(points2f.toArray());
+
+					Imgcodecs.imwrite("submat.png", frame.submat(goalRect));
+					System.out.println("dist: " + findDistToGoal(findRealHeight(goalRect.width), 31));
+					System.out.println("lat angle: " + findLateralAngle(bottomY));
+					System.out.println("isFacingLeft: " + isFacingLeft(bottomY));
+					System.out.println("isOnRight: " + isOnRight(goalRect));
+				
+				}
+			}
 		}
 	}
 }
