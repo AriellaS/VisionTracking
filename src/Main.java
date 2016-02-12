@@ -72,11 +72,12 @@ public class Main {
 	
 	public static MatOfPoint findGoalContour(List<MatOfPoint> contours) {
 		List<Rect> rects = new ArrayList<Rect>();
+		rects.add(Imgproc.boundingRect(contours.get(0)));
 		int lrgstRectIndx = 0;
 		for(int i = 1; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
 			rects.add(rect);
-			if(rects.get(i).width > rects.get(lrgstRectIndx).width) {
+			if(rect.width > rects.get(lrgstRectIndx).width) {
 				lrgstRectIndx = i;
 			}
 		}
@@ -88,10 +89,10 @@ public class Main {
 		List<MatOfPoint> goals = new ArrayList<MatOfPoint>();
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
-			Point center = new Point(rect.x + rect.width/2, rect.y + rect.height/2);
-			if((center.x > tower.x && center.x < (tower.x + tower.width)) 
-					&& (center.y > tower.y && center.y < (tower.y + tower.height)));
-			goals.add(contours.get(i));
+			if((rect.x > tower.x && (rect.x + rect.width) < (tower.x + tower.width)) 
+					&& (rect.y > tower.y && (rect.y + rect.height) < (tower.y + tower.height))) {
+					goals.add(contours.get(i));
+			}
 		}
 		return goals;
 	}
@@ -121,9 +122,9 @@ public class Main {
 		Core.inRange(input, new Scalar(25, 0, 220), new Scalar(130, 80, 255), output);
 	}
 	
-	// tower is supposed to be black
+	// tower is supposed to be dark grey
 	public static void cancelColorsTower(Mat input, Mat output) {
-		Core.inRange(input, new Scalar(0, 0, 0), new Scalar(180, 255, 10), output);
+		Core.inRange(input, new Scalar( 0, 0, 0), new Scalar(20, 20, 50), output);
 	}
 	
 	public static List<Mat> makeSubmats(Mat input, List<Rect> rects) {
@@ -174,12 +175,22 @@ public class Main {
 		return angle;
 	}
 	
+	// facing forward relative to closest goal
+	public static boolean isFacingForward(Point[] points) {
+		return Math.abs(points[0].y - points[1].y) < 5;
+	}
+	
 	//if true then robot turns right to face goal straight on
 	public static boolean isFacingLeft(Point[] points) {
 		if(points[0].y > points[1].y) {
 			return points[0].x < points[1].x;
 		}
 		return points[0].x > points[1].x;
+	}
+	
+	//midline of the closest goal
+	public static boolean isOnMidline(Rect rect) {
+		return Math.abs(IMG_WIDTH/2 - (rect.x + rect.width/2)) < 10;
 	}
 	
 	//if true then robot is on right of midline
@@ -206,9 +217,9 @@ public class Main {
 			List<MatOfPoint> contours = findContours(output);
 			contours = filterContours(contours);
 			
-			if(towerRect.size() == 1) { // assumes only one tower is found 
-				Rect tower = towerRect.get(0);
-				contours = inTower(contours, tower);
+			//if(towerRect.size() == 1) { // assumes only one tower is found 
+				//Rect tower = towerRect.get(0);
+				//contours = inTower(contours, tower);
 				
 				if(contours.size() > 0) {
 					MatOfPoint goalContour = findGoalContour(contours);
@@ -219,11 +230,14 @@ public class Main {
 					Imgcodecs.imwrite("submat.png", frame.submat(goalRect));
 					System.out.println("dist: " + findDistToGoal(findRealHeight(goalRect.width), 31));
 					System.out.println("lat angle: " + findLateralAngle(bottomY));
-					System.out.println("isFacingLeft: " + isFacingLeft(bottomY));
-					System.out.println("isOnRight: " + isOnRight(goalRect));
-				
+					
+					if(isFacingForward(bottomY)) System.out.println("facing forward");
+					else System.out.println("isFacingLeft: " + isFacingLeft(bottomY));					
+					
+					if(isOnMidline(goalRect)) System.out.println("on midline");
+					else System.out.println("isOnRight: " + isOnRight(goalRect));
 				}
-			}
+			//}
 		}
 	}
 }
