@@ -30,6 +30,16 @@ public class Main {
 		camera.read(frame);
 		findGoal(camera);
 		
+		/*
+		frame = Imgcodecs.imread("ImgDB/11-mid-18-B.png");
+		convertImage(frame, frame);
+		cancelColorsTape(frame, frame);
+		Imgcodecs.imwrite("thing.png",frame);
+		List<MatOfPoint> contours = findContours(frame);	
+		contours = filterContours(contours);
+		MatOfPoint contour = findGoalContour(contours);
+		System.out.println(approxPoly(contour).toList().size());
+		*/
 	}
 	
 	public static void convertImage(Mat input, Mat output) {
@@ -61,10 +71,13 @@ public class Main {
 		List<MatOfPoint> newContours = new ArrayList<MatOfPoint>();
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
-			if(rect.width > 90 && rect.width < 200 
+			if(rect.width > 80 && rect.width < 200 
 					&& rect.height > 30 && rect.height < 100
 					&& rect.y < 400) {
-				newContours.add(contours.get(i));
+				MatOfPoint2f point2f = approxPoly(contours.get(i));
+				if(point2f.toList().size() >= 7 && point2f.toList().size() <= 9) {
+					newContours.add(contours.get(i));
+				}
 			}
 		}
 		return newContours;
@@ -102,11 +115,11 @@ public class Main {
 		MatOfPoint2f point2f = new MatOfPoint2f();
 		List<Point> points = contour.toList();
 		point2f.fromList(points);
-		Imgproc.approxPolyDP(point2f, point2f, 7.0, false); //third parameter: smaller->more points
+		Imgproc.approxPolyDP(point2f, point2f, 6.0, true); //third parameter: smaller->more points
 		return point2f;
 	} 
 	
-	public static List<Rect> findRect(List<MatOfPoint> contours) {
+	public static List<Rect> findRects(List<MatOfPoint> contours) {
 		List<Rect> rects = new ArrayList<Rect>();
 		for(int i = 0; i < contours.size(); i++) {
 			Rect rect = Imgproc.boundingRect(contours.get(i));
@@ -122,9 +135,9 @@ public class Main {
 		Core.inRange(input, new Scalar(25, 0, 220), new Scalar(130, 80, 255), output);
 	}
 	
-	// tower is supposed to be dark grey
+	// tower is supposed to be dark grey (blue-ish purple in converted)
 	public static void cancelColorsTower(Mat input, Mat output) {
-		Core.inRange(input, new Scalar( 0, 0, 0), new Scalar(20, 20, 50), output);
+		Core.inRange(input, new Scalar(0, 0, 0), new Scalar(180, 255, 255), output);
 	}
 	
 	public static List<Mat> makeSubmats(Mat input, List<Rect> rects) {
@@ -164,7 +177,7 @@ public class Main {
 		return distError;
 	}
 	
-	//finds real height based off of observed width
+	//finds real height of tape based off of observed width
 	public static double findRealHeight(double width) {
 		return width * 0.7; //ratio from height to width is 14/20 (0.7)
 	}
@@ -177,7 +190,7 @@ public class Main {
 	
 	// facing forward relative to closest goal
 	public static boolean isFacingForward(Point[] points) {
-		return Math.abs(points[0].y - points[1].y) < 5;
+		return Math.abs(points[0].y - points[1].y) < 10;
 	}
 	
 	//if true then robot turns right to face goal straight on
@@ -190,7 +203,7 @@ public class Main {
 	
 	//midline of the closest goal
 	public static boolean isOnMidline(Rect rect) {
-		return Math.abs(IMG_WIDTH/2 - (rect.x + rect.width/2)) < 10;
+		return Math.abs(IMG_WIDTH/2 - (rect.x + rect.width/2)) < 20;
 	}
 	
 	//if true then robot is on right of midline
@@ -202,18 +215,19 @@ public class Main {
 		while(true) {
 			Mat frame = new Mat();
 			Mat output = new Mat();
-			Mat towerImg = new Mat();
+			//Mat towerImg = new Mat();
 			camera.read(frame);
+			
 			Imgcodecs.imwrite("original.png", frame);
 			convertImage(frame, output);
 			Imgcodecs.imwrite("converted.png", output);
-			cancelColorsTower(output, towerImg);
-			Imgcodecs.imwrite("tower.png", towerImg);
+			//cancelColorsTower(output, towerImg);
+			//Imgcodecs.imwrite("tower.png", towerImg);
 			cancelColorsTape(output, output);
 			Imgcodecs.imwrite("tape.png", output);
 			
-			List<MatOfPoint> contourTower = findContours(towerImg);
-			List<Rect> towerRect = findRect(contourTower);
+			//List<MatOfPoint> contourTower = findContours(towerImg);
+			//List<Rect> towerRect = findRects(contourTower);
 			List<MatOfPoint> contours = findContours(output);
 			contours = filterContours(contours);
 			
