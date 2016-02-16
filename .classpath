@@ -7,10 +7,6 @@
 			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/MorTorq_Build/Downloads/opencv/build/java/x64"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/MorTorq_Build/workspace/VisionTracking/lib/opencv-310.jar">
-		<attributes>
-			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/Mortorq/Downloads/opencv/build/java/x64"/>
-		</attributes>
-	</classpathentry>
+	<classpathentry kind="lib" path="lib/opencv-310.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
