@@ -147,7 +147,7 @@ public class Main {
 	}
 	
 	public static double pointDist(Point[] points) {
-		double dist = Math.sqrt((points[0].x - points[1].x)*(points[0].x - points[1].x) + (points[0].x - points[1].y)*(points[0].y - points[1].y));
+		double dist = Math.sqrt((points[0].x - points[1].x)*(points[0].x - points[1].x) + (points[0].y - points[1].y)*(points[0].y - points[1].y));
 		return dist;
 	}
 	
@@ -162,13 +162,13 @@ public class Main {
 	
 	//finds angle at which camera is facing the goal
 	public static double findLateralAngle(Point[] points) {
-		double angle = Math.toDegrees(Math.asin(Math.abs((points[0].y - points[1].y)/pointDist(points))));
+		double angle = Math.toDegrees(Math.asin(Math.abs(points[0].y - points[1].y)/pointDist(points)));
 		return angle;
 	}
 	
 	// facing forward relative to closest goal
 	public static boolean isFacingForward(Point[] points) {
-		return Math.abs(points[0].y - points[1].y) < 10;
+		return Math.abs(points[0].y - points[1].y) < 5;
 	}
 	
 	//if true then robot turns right to face goal straight on
@@ -190,14 +190,14 @@ public class Main {
 	}
 	
 	public static double distFromMidline(Point[] bottomY, Rect rect, double dist) {
-		double highestX = bottomY[1].x;
-		double secondHighestX = bottomY[0].x;
+		double highX = bottomY[1].x;
+		double lowX = bottomY[0].x;
 		if(bottomY[0].x > bottomY[1].x) {
-			highestX = bottomY[0].x;
-			secondHighestX = bottomY[1].x;
+			highX = bottomY[0].x;
+			lowX = bottomY[1].x;
 		}
-		double angle = Math.atan(rect.height/((rect.width + secondHighestX) - highestX));
-		return dist/Math.tan(angle);
+		double angle = Math.atan((Math.abs((rect.width + lowX) - highX))/rect.height);
+		return dist * Math.tan(angle);
 	}
 	
 	public static void findGoal(VideoCapture camera) {
@@ -220,7 +220,7 @@ public class Main {
 				Rect goalRect = Imgproc.boundingRect(goalContour);
 				MatOfPoint2f points2f = approxPoly(goalContour);
 				Point[] bottomY = findBottomY(points2f.toArray());
-
+				
 				Imgcodecs.imwrite("submat.png", frame.submat(goalRect));
 				double distToGoal = findDistToGoal(goalRect.width, 31);
 				System.out.println("dist: " + distToGoal);
