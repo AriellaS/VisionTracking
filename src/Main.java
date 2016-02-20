@@ -102,7 +102,7 @@ public class Main {
 		MatOfPoint2f point2f = new MatOfPoint2f();
 		List<Point> points = contour.toList();
 		point2f.fromList(points);
-		Imgproc.approxPolyDP(point2f, point2f, 6.0, true); //third parameter: smaller->more points
+		Imgproc.approxPolyDP(point2f, point2f, 5.0, true); //third parameter: smaller->more points
 		return point2f;
 	} 
 	
@@ -144,6 +144,21 @@ public class Main {
 		}
 		Point[] highestYCoords = {highestY, secondHighestY};
 		return highestYCoords;
+	}
+	
+	public static Point[] findTopY(Point[] points) {
+		Point lowestY = points[0];
+		Point secondLowestY = points[1];
+		for(int i = 2; i < points.length; i++) {
+			if(points[i].y < lowestY.y) {
+				lowestY = points[i];
+			}
+			else if(points[i].y < secondLowestY.y) {
+				secondLowestY = points[i];
+			}
+		}
+		Point[] lowestYCoords = {lowestY, secondLowestY};
+		return lowestYCoords;
 	}
 	
 	public static double pointDist(Point[] points) {
@@ -189,15 +204,16 @@ public class Main {
 		return (rect.x + rect.width/2) < IMG_WIDTH/2;
 	}
 	
-	public static double distFromMidline(Point[] bottomY, Rect rect, double dist) {
-		double highX = bottomY[1].x;
-		double lowX = bottomY[0].x;
-		if(bottomY[0].x > bottomY[1].x) {
-			highX = bottomY[0].x;
-			lowX = bottomY[1].x;
+	public static double distFromMidline(Point[] bottomY, Point[] topY, double dist) {
+		Point bottomLeft = bottomY[0];
+		if(bottomY[1].x < bottomY[0].x) {
+			bottomLeft = bottomY[1];
 		}
-		double angle = Math.atan((Math.abs((rect.width + lowX) - highX))/rect.height);
-		return dist * Math.tan(angle);
+		Point topLeft = topY[0];
+		if(topY[1].x < topY[0].x) {
+			topLeft = topY[1];
+		}
+		return dist * (Math.abs(bottomLeft.x - topLeft.x) / Math.abs(bottomLeft.y - topLeft.y));
 	}
 	
 	public static void findGoal(VideoCapture camera) {
@@ -220,10 +236,11 @@ public class Main {
 				Rect goalRect = Imgproc.boundingRect(goalContour);
 				MatOfPoint2f points2f = approxPoly(goalContour);
 				Point[] bottomY = findBottomY(points2f.toArray());
+				Point[] topY = findTopY(points2f.toArray());
 				
 				Imgcodecs.imwrite("submat.png", frame.submat(goalRect));
 				double distToGoal = findDistToGoal(goalRect.width, 31);
-				System.out.println("dist: " + distToGoal);
+				System.out.println(distToGoal);
 				
 				if(isFacingForward(bottomY)) {
 					System.out.println("facing forward");
@@ -236,7 +253,7 @@ public class Main {
 					System.out.println("on midline");
 				} else {
 					 System.out.println("isOnRight: " + isOnRight(goalRect));
-					 System.out.println("distFromMidline: " + distFromMidline(bottomY, goalRect, distToGoal));
+					 System.out.println("distFromMidline: " + distFromMidline(bottomY, topY, distToGoal));
 				}
 			}
 		}
